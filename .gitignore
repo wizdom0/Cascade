@@ -1,0 +1,23 @@
+# Build output
+cascade
+*.o
+*.obj
+build/
+
+# Debug artifacts
+*.dSYM/
+core
+vgcore.*
+
+# CMake (once you go multi-file)
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+compile_commands.json
