@@ -42,23 +42,49 @@ void UpdateCells(std::vector<Cell> &grid)
                 }
                 else if (x < (int)gridWidth - 1 && grid[i + gridWidth + 1] == Cell::EMPTY)
                 {
-                    std::swap(grid[i], grid[i + gridWidth + 1]); // Below Right
+                    std::swap(grid[i], grid[i + gridWidth + 1]); // Below right
                 }
                 break;
             }
             case Cell::WATER:
             {
                 int x = i % gridWidth;
+                if (i + (int)gridWidth >= (int)grid.size())
+                    break;
+                if (grid[i + gridWidth] == Cell::EMPTY)
+                {
+                    std::swap(grid[i], grid[i + gridWidth]); // Below
+                }
+                else if (x > 0 && grid[i + gridWidth - 1] == Cell::EMPTY)
+                {
+                    std::swap(grid[i], grid[i + gridWidth - 1]); // Below left
+                }
+                else if (x < (int)gridWidth - 1 && grid[i + gridWidth + 1] == Cell::EMPTY)
+                {
+                    std::swap(grid[i], grid[i + gridWidth + 1]); // Below right
+                }
+                else if (x > 0 && grid[i - 1] == Cell::EMPTY)
+                {
+                    std::swap(grid[i], grid[i - 1]); // Left
+                }
+                else if (x < (int)gridWidth - 1 && grid[i + 1] == Cell::EMPTY)
+                {
+                    std::swap(grid[i], grid[i + 1]); // Right
+                }
+                break;
             }
         }
     }
 }
+
 void DrawCells(const std::vector<Cell> &grid)
 {
     for (size_t i = 0; i < grid.size(); i++)
     {
         switch (grid[i])
         {
+            case Cell::EMPTY:
+                break;
             case Cell::SAND:
             {
                 unsigned int xPos = i % gridWidth;
@@ -67,8 +93,14 @@ void DrawCells(const std::vector<Cell> &grid)
                 DrawRectangle(xPos * scale, yPos * scale, scale, scale, YELLOW);
                 break;
             }
-            case Cell::EMPTY:
+            case Cell::WATER:
+            {
+                unsigned int xPos = i % gridWidth;
+                unsigned int yPos = i / gridWidth;
+
+                DrawRectangle(xPos * scale, yPos * scale, scale, scale, DARKBLUE);
                 break;
+            }
         }
     }
 }
@@ -90,6 +122,24 @@ void HandleInput(std::vector<Cell> &grid)
             if (grid[index] == Cell::EMPTY)
             {
                 grid[index] = Cell::SAND;
+            }
+        }
+    }
+    if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
+    {
+        Vector2 mousePos = GetMousePosition();
+        int mouseGridPosX = (int)mousePos.x / scale;
+        int mouseGridPosY = (int)mousePos.y / scale;
+
+        if (mouseGridPosX >= 0 && mouseGridPosX < (int)gridWidth && mouseGridPosY >= 0 &&
+            mouseGridPosY < (int)gridHeight)
+        {
+            // Reverse formula to get index based on position
+            int index = mouseGridPosY * gridWidth + mouseGridPosX;
+
+            if (grid[index] == Cell::EMPTY)
+            {
+                grid[index] = Cell::WATER;
             }
         }
     }
