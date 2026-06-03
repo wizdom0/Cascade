@@ -16,63 +16,88 @@ enum class Cell : uint8_t
 {
     EMPTY,
     SAND,
-    WATER
+    WATER,
+    STONE
 };
 
 void UpdateCells(std::vector<Cell> &grid)
 {
+    std::vector<bool> moved(grid.size(), false);
     for (int i = grid.size() - 1; i >= 0; i--)
     {
+        if (moved[i])
+            continue;
         switch (grid[i])
         {
             case Cell::EMPTY:
                 break;
             case Cell::SAND:
             {
-                int x = i % gridWidth;
+                int barrierX = i % gridWidth;
                 if (i + (int)gridWidth >= (int)grid.size())
                     break;
-                if (grid[i + gridWidth] == Cell::EMPTY)
+                if (!moved[i + gridWidth] &&
+                    (grid[i + gridWidth] == Cell::EMPTY || grid[i + gridWidth] == Cell::WATER))
                 {
                     std::swap(grid[i], grid[i + gridWidth]); // Below
+                    moved[i + gridWidth] = true;
+                    if (grid[i] != Cell::EMPTY)
+                        moved[i] = true;
                 }
-                else if (x > 0 && grid[i + gridWidth - 1] == Cell::EMPTY)
+                else if (barrierX > 0 && !moved[i + gridWidth - 1] &&
+                         (grid[i + gridWidth - 1] == Cell::EMPTY ||
+                          grid[i + gridWidth - 1] == Cell::WATER))
                 {
                     std::swap(grid[i], grid[i + gridWidth - 1]); // Below left
+                    moved[i + gridWidth - 1] = true;
+                    if (grid[i] != Cell::EMPTY)
+                        moved[i] = true;
                 }
-                else if (x < (int)gridWidth - 1 && grid[i + gridWidth + 1] == Cell::EMPTY)
+                else if (barrierX < (int)gridWidth - 1 && !moved[i + gridWidth + 1] &&
+                         (grid[i + gridWidth + 1] == Cell::EMPTY ||
+                          grid[i + gridWidth + 1] == Cell::WATER))
                 {
                     std::swap(grid[i], grid[i + gridWidth + 1]); // Below right
+                    moved[i + gridWidth + 1] = true;
+                    if (grid[i] != Cell::EMPTY)
+                        moved[i] = true;
                 }
                 break;
             }
             case Cell::WATER:
             {
-                int x = i % gridWidth;
-                if (i + (int)gridWidth >= (int)grid.size())
-                    break;
-                if (grid[i + gridWidth] == Cell::EMPTY)
+                bool hasBelow = i + (int)gridWidth < (int)grid.size();
+                int barrierX = i % gridWidth;
+                if (hasBelow && grid[i + gridWidth] == Cell::EMPTY)
                 {
                     std::swap(grid[i], grid[i + gridWidth]); // Below
+                    moved[i + gridWidth] = true;
                 }
-                else if (x > 0 && grid[i + gridWidth - 1] == Cell::EMPTY)
+                else if (barrierX > 0 && hasBelow && grid[i + gridWidth - 1] == Cell::EMPTY)
                 {
                     std::swap(grid[i], grid[i + gridWidth - 1]); // Below left
+                    moved[i + gridWidth - 1] = true;
                 }
-                else if (x < (int)gridWidth - 1 && grid[i + gridWidth + 1] == Cell::EMPTY)
+                else if (barrierX < (int)gridWidth - 1 && hasBelow &&
+                         grid[i + gridWidth + 1] == Cell::EMPTY)
                 {
                     std::swap(grid[i], grid[i + gridWidth + 1]); // Below right
+                    moved[i + gridWidth + 1] = true;
                 }
-                else if (x > 0 && grid[i - 1] == Cell::EMPTY)
+                else if (barrierX > 0 && grid[i - 1] == Cell::EMPTY)
                 {
                     std::swap(grid[i], grid[i - 1]); // Left
+                    moved[i - 1] = true;
                 }
-                else if (x < (int)gridWidth - 1 && grid[i + 1] == Cell::EMPTY)
+                else if (barrierX < (int)gridWidth - 1 && grid[i + 1] == Cell::EMPTY)
                 {
                     std::swap(grid[i], grid[i + 1]); // Right
+                    moved[i + 1] = true;
                 }
                 break;
             }
+            case Cell::STONE:
+                break;
         }
     }
 }
@@ -99,6 +124,14 @@ void DrawCells(const std::vector<Cell> &grid)
                 unsigned int yPos = i / gridWidth;
 
                 DrawRectangle(xPos * scale, yPos * scale, scale, scale, DARKBLUE);
+                break;
+            }
+            case Cell::STONE:
+            {
+                unsigned int xPos = i % gridWidth;
+                unsigned int yPos = i / gridWidth;
+
+                DrawRectangle(xPos * scale, yPos * scale, scale, scale, DARKGRAY);
                 break;
             }
         }
@@ -140,6 +173,24 @@ void HandleInput(std::vector<Cell> &grid)
             if (grid[index] == Cell::EMPTY)
             {
                 grid[index] = Cell::WATER;
+            }
+        }
+    }
+    if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE))
+    {
+        Vector2 mousePos = GetMousePosition();
+        int mouseGridPosX = (int)mousePos.x / scale;
+        int mouseGridPosY = (int)mousePos.y / scale;
+
+        if (mouseGridPosX >= 0 && mouseGridPosX < (int)gridWidth && mouseGridPosY >= 0 &&
+            mouseGridPosY < (int)gridHeight)
+        {
+            // Reverse formula to get index based on position
+            int index = mouseGridPosY * gridWidth + mouseGridPosX;
+
+            if (grid[index] == Cell::EMPTY)
+            {
+                grid[index] = Cell::STONE;
             }
         }
     }
