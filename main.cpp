@@ -20,6 +20,8 @@ enum class Cell : uint8_t
     STONE
 };
 
+Cell currentMaterial = Cell::SAND;
+
 void UpdateCells(std::vector<Cell> &grid)
 {
     std::vector<bool> moved(grid.size(), false);
@@ -29,12 +31,15 @@ void UpdateCells(std::vector<Cell> &grid)
             continue;
         switch (grid[i])
         {
-            case Cell::EMPTY:
+            case Cell::EMPTY: {
+                if (grid[i] != Cell::EMPTY)
+                    grid[i] = Cell::EMPTY;
                 break;
+            }
             case Cell::SAND:
             {
                 int barrierX = i % gridWidth;
-                if (i + (int)gridWidth >= (int)grid.size())
+                if (i + static_cast<int>(gridWidth) >= static_cast<int>(grid.size()))
                     break;
                 if (!moved[i + gridWidth] &&
                     (grid[i + gridWidth] == Cell::EMPTY || grid[i + gridWidth] == Cell::WATER))
@@ -53,7 +58,7 @@ void UpdateCells(std::vector<Cell> &grid)
                     if (grid[i] != Cell::EMPTY)
                         moved[i] = true;
                 }
-                else if (barrierX < (int)gridWidth - 1 && !moved[i + gridWidth + 1] &&
+                else if (barrierX < static_cast<int>(gridWidth) - 1 && !moved[i + gridWidth + 1] &&
                          (grid[i + gridWidth + 1] == Cell::EMPTY ||
                           grid[i + gridWidth + 1] == Cell::WATER))
                 {
@@ -66,7 +71,7 @@ void UpdateCells(std::vector<Cell> &grid)
             }
             case Cell::WATER:
             {
-                bool hasBelow = i + (int)gridWidth < (int)grid.size();
+                bool hasBelow = i + static_cast<int>(gridWidth) < static_cast<int>(grid.size());
                 int barrierX = i % gridWidth;
                 if (hasBelow && grid[i + gridWidth] == Cell::EMPTY)
                 {
@@ -89,7 +94,7 @@ void UpdateCells(std::vector<Cell> &grid)
                     std::swap(grid[i], grid[i - 1]); // Left
                     moved[i - 1] = true;
                 }
-                else if (barrierX < (int)gridWidth - 1 && grid[i + 1] == Cell::EMPTY)
+                else if (barrierX < static_cast<int>(gridWidth) - 1 && grid[i + 1] == Cell::EMPTY)
                 {
                     std::swap(grid[i], grid[i + 1]); // Right
                     moved[i + 1] = true;
@@ -112,24 +117,24 @@ void DrawCells(const std::vector<Cell> &grid)
                 break;
             case Cell::SAND:
             {
-                unsigned int xPos = i % gridWidth;
-                unsigned int yPos = i / gridWidth;
+                const unsigned int xPos = i % gridWidth;
+                const unsigned int yPos = i / gridWidth;
 
                 DrawRectangle(xPos * scale, yPos * scale, scale, scale, YELLOW);
                 break;
             }
             case Cell::WATER:
             {
-                unsigned int xPos = i % gridWidth;
-                unsigned int yPos = i / gridWidth;
+                const unsigned int xPos = i % gridWidth;
+                const unsigned int yPos = i / gridWidth;
 
                 DrawRectangle(xPos * scale, yPos * scale, scale, scale, DARKBLUE);
                 break;
             }
             case Cell::STONE:
             {
-                unsigned int xPos = i % gridWidth;
-                unsigned int yPos = i / gridWidth;
+                const unsigned int xPos = i % gridWidth;
+                const unsigned int yPos = i / gridWidth;
 
                 DrawRectangle(xPos * scale, yPos * scale, scale, scale, DARKGRAY);
                 break;
@@ -152,48 +157,21 @@ void HandleInput(std::vector<Cell> &grid)
             // Reverse formula to get index based on position
             int index = mouseGridPosY * gridWidth + mouseGridPosX;
 
-            if (grid[index] == Cell::EMPTY)
+            if (grid[index] == Cell::EMPTY || currentMaterial == Cell::EMPTY)
             {
-                grid[index] = Cell::SAND;
+                grid[index] = currentMaterial;
             }
         }
     }
-    if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT))
-    {
-        Vector2 mousePos = GetMousePosition();
-        int mouseGridPosX = (int)mousePos.x / scale;
-        int mouseGridPosY = (int)mousePos.y / scale;
 
-        if (mouseGridPosX >= 0 && mouseGridPosX < (int)gridWidth && mouseGridPosY >= 0 &&
-            mouseGridPosY < (int)gridHeight)
-        {
-            // Reverse formula to get index based on position
-            int index = mouseGridPosY * gridWidth + mouseGridPosX;
-
-            if (grid[index] == Cell::EMPTY)
-            {
-                grid[index] = Cell::WATER;
-            }
-        }
-    }
-    if (IsMouseButtonDown(MOUSE_BUTTON_MIDDLE))
-    {
-        Vector2 mousePos = GetMousePosition();
-        int mouseGridPosX = (int)mousePos.x / scale;
-        int mouseGridPosY = (int)mousePos.y / scale;
-
-        if (mouseGridPosX >= 0 && mouseGridPosX < (int)gridWidth && mouseGridPosY >= 0 &&
-            mouseGridPosY < (int)gridHeight)
-        {
-            // Reverse formula to get index based on position
-            int index = mouseGridPosY * gridWidth + mouseGridPosX;
-
-            if (grid[index] == Cell::EMPTY)
-            {
-                grid[index] = Cell::STONE;
-            }
-        }
-    }
+    if (IsKeyPressed(KEY_ZERO))
+        currentMaterial = Cell::EMPTY;
+    if (IsKeyPressed(KEY_ONE))
+        currentMaterial = Cell::SAND;
+    if (IsKeyPressed(KEY_TWO))
+        currentMaterial = Cell::WATER;
+    if (IsKeyPressed(KEY_THREE))
+        currentMaterial = Cell::STONE;
 }
 
 int main()
