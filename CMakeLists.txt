@@ -31,7 +31,12 @@ target_link_libraries(rlimgui PUBLIC raylib imgui::imgui)
 # -----------------------------------------------------------------------------
 
 add_executable(Cascade
-        main.cpp)
+        main.cpp
+        simulation.cpp
+        ui.cpp
+        renderer.cpp
+        cell.cpp
+)
 
 # raylib (+ transitive GL/X11/pthread/...) and rlimgui (carries ImGui + the
 # rlImGui header transitively).
