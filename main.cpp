@@ -2,15 +2,21 @@
 #include <cstdint>
 #include <iostream>
 #include <vector>
+#include <algorithm>
+#include "rlImGui.h"
+#include "imgui.h"
 
-unsigned int winWidth = 1280;
-unsigned int winHeight = 720;
 
-unsigned int simFrameRate = 120;
+int winWidth = 1280;
+int winHeight = 720;
 
-unsigned int scale = 10;
-unsigned int gridWidth = winWidth / scale;
-unsigned int gridHeight = winHeight / scale;
+int simFrameRate = 60;
+bool paused = false;
+bool stepOnce = false;
+
+int scale = 4;
+int gridWidth = winWidth / scale;
+int gridHeight = winHeight / scale;
 
 enum class Cell : uint8_t
 {
@@ -20,7 +26,31 @@ enum class Cell : uint8_t
     STONE
 };
 
-Cell currentMaterial = Cell::SAND;
+auto currentMaterial = Cell::SAND;
+int brushLimit = 50;
+int brushRadius = 6;
+
+char* getStringFromCell(const Cell c) {
+    switch (c) {
+        case Cell::EMPTY: {
+            return "Erase";
+            break;
+        }
+        case Cell::SAND: {
+            return "Sand";
+            break;
+        }
+        case Cell::WATER: {
+            return "Water";
+            break;
+        }
+        case Cell::STONE: {
+            return "Stone";
+            break;
+        }
+    }
+    return "???";
+}
 
 void UpdateCells(std::vector<Cell> &grid)
 {
@@ -83,7 +113,7 @@ void UpdateCells(std::vector<Cell> &grid)
                     std::swap(grid[i], grid[i + gridWidth - 1]); // Below left
                     moved[i + gridWidth - 1] = true;
                 }
-                else if (barrierX < (int)gridWidth - 1 && hasBelow &&
+                else if (barrierX < static_cast<int>(gridWidth) - 1 && hasBelow &&
                          grid[i + gridWidth + 1] == Cell::EMPTY)
                 {
                     std::swap(grid[i], grid[i + gridWidth + 1]); // Below right
@@ -121,6 +151,7 @@ void DrawCells(const std::vector<Cell> &grid)
                 const unsigned int yPos = i / gridWidth;
 
                 DrawRectangle(xPos * scale, yPos * scale, scale, scale, YELLOW);
+
                 break;
             }
             case Cell::WATER:
@@ -143,41 +174,96 @@ void DrawCells(const std::vector<Cell> &grid)
     }
 }
 
-void HandleInput(std::vector<Cell> &grid)
-{
+void HandleInput(std::vector<Cell> &grid) {
+    if (ImGui::GetIO().WantCaptureMouse) return; // If user is using GUI, don't detect input.
     if (IsMouseButtonDown(MOUSE_BUTTON_LEFT))
     {
-        Vector2 mousePos = GetMousePosition();
-        int mouseGridPosX = (int)mousePos.x / scale;
-        int mouseGridPosY = (int)mousePos.y / scale;
+        auto [x, y] = GetMousePosition();
+        const int mouseGridPosX = static_cast<int>(x) / scale;
+        const int mouseGridPosY = static_cast<int>(y) / scale;
 
-        if (mouseGridPosX >= 0 && mouseGridPosX < (int)gridWidth && mouseGridPosY >= 0 &&
-            mouseGridPosY < (int)gridHeight)
+        if (mouseGridPosX >= 0 && mouseGridPosX < static_cast<int>(gridWidth) && mouseGridPosY >= 0 &&
+            mouseGridPosY < static_cast<int>(gridHeight))
         {
-            // Reverse formula to get index based on position
-            int index = mouseGridPosY * gridWidth + mouseGridPosX;
+            for (int dy = -brushRadius; dy <= brushRadius; dy++) { // For every row...
+                for (int dx = -brushRadius; dx <= brushRadius; dx++) { // check every column.
+                        int cellX = mouseGridPosX + dx, cellY = mouseGridPosY + dy;
+                        if (cellX < 0 || cellX >= gridWidth || cellY < 0 || cellY >= gridHeight)
+                            continue;
 
-            if (grid[index] == Cell::EMPTY || currentMaterial == Cell::EMPTY)
-            {
-                grid[index] = currentMaterial;
+                        // Reverse formula to get index based on position
+                        const unsigned int index = cellY * gridWidth + cellX;
+                        if (grid[index] == Cell::EMPTY || currentMaterial == Cell::EMPTY)
+                        {
+                            grid[index] = currentMaterial;
+                        }
+                }
             }
         }
     }
 
-    if (IsKeyPressed(KEY_ZERO))
+    if (const float wheel = GetMouseWheelMove(); wheel != 0)
+        brushRadius = std::clamp(brushRadius + static_cast<int>(wheel), 0, brushLimit);
+
+    if (IsKeyPressed(KEY_ZERO)) {
         currentMaterial = Cell::EMPTY;
-    if (IsKeyPressed(KEY_ONE))
+    }
+    if (IsKeyPressed(KEY_ONE)) {
         currentMaterial = Cell::SAND;
-    if (IsKeyPressed(KEY_TWO))
+    }
+    if (IsKeyPressed(KEY_TWO)) {
         currentMaterial = Cell::WATER;
-    if (IsKeyPressed(KEY_THREE))
+    }
+    if (IsKeyPressed(KEY_THREE)) {
         currentMaterial = Cell::STONE;
+    }
+}
+
+void DrawUI(std::vector<Cell> &grid) {
+    rlImGuiBegin();
+    ImGui::Begin("Controls");
+
+    ImGui::Text("FPS (lim. %d): %d", simFrameRate, GetFPS());
+    ImGui::Text("Grid size: %d", static_cast<int>(grid.size()));
+    ImGui::SliderInt("Brush", &brushRadius, 0, brushLimit);
+
+    ImGui::Separator();
+    ImGui::Checkbox("Pause Simulation", &paused);
+    if (ImGui::Button("Step")) {
+        if (paused) {
+            stepOnce = true;
+        }
+    }
+
+    ImGui::Separator();
+    ImGui::Text("Current material: %s", getStringFromCell(currentMaterial));
+    ImGui::Text("Select material:");
+    if (ImGui::Button("Erase"))
+        currentMaterial = Cell::EMPTY;
+    ImGui::SameLine();
+    if (ImGui::Button("Sand"))
+        currentMaterial = Cell::SAND;
+    ImGui::SameLine();
+    if (ImGui::Button("Water"))
+        currentMaterial = Cell::WATER;
+    ImGui::SameLine();
+    if (ImGui::Button("Stone"))
+        currentMaterial = Cell::STONE;
+
+    if (ImGui::Button("Clear"))
+        std::fill(grid.begin(), grid.end(), Cell::EMPTY);
+
+    ImGui::End();
+    rlImGuiEnd();
 }
 
 int main()
 {
     InitWindow(winWidth, winHeight, "Cascade | Interactive Cell Simulator");
     SetTargetFPS(simFrameRate);
+    std::cout << "Simulation started. Target FPS: " << simFrameRate << '\n';
+
+    rlImGuiSetup(true);
 
     // Initialize grid
     std::vector<Cell> grid(gridWidth * gridHeight);
@@ -185,15 +271,22 @@ int main()
     // Game loop
     while (!WindowShouldClose())
     {
-        UpdateCells(grid);
+        if (!paused || stepOnce) {
+            UpdateCells(grid);
+            stepOnce = false;
+        }
         HandleInput(grid);
 
         BeginDrawing();
         ClearBackground(BLACK);
         DrawCells(grid);
+
+        DrawUI(grid);
+
         EndDrawing();
     }
 
+    rlImGuiShutdown();
     CloseWindow();
     return 0;
 }
